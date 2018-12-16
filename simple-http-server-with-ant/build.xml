@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<project basedir="." default="build" name="simple-http-server-with-ant">
+    
+    <property environment="env"/>
+
+    <path id="first-http-server.classpath">
+        <pathelement location="bin"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="bin"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+
+    <target depends="clean" name="cleanall"/>
+
+    <target depends="build-project" name="build"/>
+
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="source,lines,vars" destdir="bin" includeantruntime="false" source="1.8" target="1.8">
+            <src path="src/main/"/>
+            <classpath refid="first-http-server.classpath"/>
+        </javac>
+    </target>
+
+    <target depends="init" name="build-test">
+        <javac debug="true" debuglevel="source,lines,vars" destdir="bin" includeantruntime="false" source="1.8" target="1.8">
+            <src path="src/test/"/>
+            <classpath refid="first-http-server.classpath"/>
+        	<classpath location="/usr/share/java/junit5/junit-jupiter-api.jar"/>
+        </javac>
+    </target>
+
+    <target depends="build" name="build-jar">
+        <mkdir dir="pkg"/>
+        <jar destfile="pkg/firstHttpServer.jar" basedir="bin/" includes="httpServerMain.class">
+            <manifest>
+                <attribute name="Main-Class" value="httpServerMain"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target depends="build-jar" name="build-container">
+    	<!-- NOTE: build-container can be successfully executed only by an user with enough privileges -->
+    	<echo message="NOTE: build-container can be successfully executed only by an user with enough privileges"/>
+    	<copy file="pkg/firstHttpServer.jar" todir="./docker/"/>
+    	<exec dir="./docker/" executable="docker">
+    	    <arg line="build -t myfirsthttpsrv ."/>
+    	</exec>
+    </target>
+	
+	<target depends="build-container,build-test" name="test-container">
+    	<!-- NOTE: test-container can be successfully executed only by an user with enough privileges -->
+    	<echo message="NOTE: test-container can be successfully executed only by an user with enough privileges"/>
+		<exec dir="./docker/" executable="docker" outputproperty="containerhash">
+		    <arg line="run -d -p 4000:8500 myfirsthttpsrv"/>
+		</exec>
+		<exec dir="./docker/" executable="docker">
+		    <arg line="ps"/>
+		</exec>
+		<java classname="httpServerTestLauncher" failonerror="true" fork="yes">
+		  <arg value="4000"/>
+		  <classpath>
+		    <pathelement path="bin/"/>
+		  	<pathelement location="/usr/share/java/junit5/junit-jupiter-api.jar"/>
+		  	<pathelement location="/usr/share/java/junit5/junit-platform-commons.jar"/>
+		  	<pathelement location="/usr/share/java/opentest4j/opentest4j.jar"/>
+		  </classpath>
+		</java>
+		<exec dir="./docker/" executable="docker">
+		    <arg line="stop ${containerhash}"/>
+		</exec>
+	</target>
+
+    <target depends="test-container" name="push-container">
+    	<!-- NOTE: push-container can be successfully executed only by an user with enough privileges -->
+    	<echo message="NOTE: push-container can be successfully executed only by an user with enough privileges"/>
+    	<exec dir="./docker/" executable="docker">
+    	    <arg line="tag myfirsthttpsrv acoslovch/first-container:3"/>
+    	</exec>
+    	<exec dir="./docker/" executable="docker">
+    	    <arg line="push acoslovch/first-container:3"/>
+    	</exec>	
+    </target>
+
+</project>

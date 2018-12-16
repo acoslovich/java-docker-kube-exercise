@@ -1,0 +1,6 @@
+<?eclipse.ant.import?>
+<project>
+    <target depends="build" name="build-jar" >
+       <jar destfile="firstHttpSrv.jar" basedir="bin/"/>
+    </target>
+</project>
